@@ -1,0 +1,33 @@
+
+        
+        
+          <form  action="/" method="post">
+            <h3>Select your favorite sports:</h3>
+            <label><input type="checkbox" value="football" name="sport"> Football</label>
+            <label><input type="checkbox" value="baseball" name="sport"> Baseball</label>
+            <label><input type="checkbox" value="cricket" name="sport"> Cricket</label>
+            <label><input type="checkbox" value="boxing" name="sport"> Boxing</label>
+            <label><input type="checkbox" value="racing" name="sport"> Racing</label>
+            <label><input type="checkbox" value="swimming" name="sport"> Swimming</label>
+            <br>
+            <button type="submit">Get Values</button>
+        </form>
+        <form action="/" method="post">
+            
+            sid  <input type="text" name="sid" value="" />
+            sid  <input type="text" name="sid" value="" />
+            sid  <input type="text" name="sid" value="" />
+            sid  <input type="text" name="sid" value="" />
+            sid  <input type="text" name="sid" value="" />
+            sid  <input type="submit" name="name" value="" />
+        </form>
+        
+        
+         [HttpPost]
+        public ActionResult Index(FormCollection fc)
+        {
+            string test = fc["txttest"];
+            string test2 = fc["sid"];
+            string test32 = fc["sport"];
+            return RedirectToAction("Index");
+        }
