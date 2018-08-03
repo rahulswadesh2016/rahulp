@@ -1,0 +1,11 @@
+public DataSet fetch_master_ds(string Condition1, string Condition2, string Condition3, string OnTable)
+        {
+            DataSet ds = new DataSet();
+            Property p = new Property();
+            p.Condition1 = Condition1;
+            p.Condition2 = Condition2;
+            p.Condition3 = Condition3;
+            p.OnTable = OnTable;
+            ds = dl.FETCH_MASTER(p);
+            return ds;
+        }
