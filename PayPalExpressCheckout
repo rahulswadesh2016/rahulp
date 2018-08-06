@@ -1,0 +1,170 @@
+ public ActionResult PayPalExpressCheckout()
+        {
+            System.Web.HttpCookie loginCookie = Request.Cookies["login_cookie"];
+            long RegId = Int64.Parse(loginCookie["id"]);
+            System.Web.HttpCookie cartCookie = Request.Cookies["cart"];
+            String GuidId = "";
+            string address = "";
+            decimal totalamt = 0;
+            //double totalamt1 = 0.00;
+
+            decimal totQty = 0;
+            System.Net.ServicePointManager.Expect100Continue = true;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls
+            | SecurityProtocolType.Tls11
+            | SecurityProtocolType.Tls12
+            | SecurityProtocolType.Ssl3;
+
+            PaymentDetailsType paymentDetail = new PaymentDetailsType();
+            //PaymentDetailsType paymentDetail_1111 = new PaymentDetailsType();
+            CurrencyCodeType currency = (CurrencyCodeType)EnumUtils.GetValue("USD", typeof(CurrencyCodeType));
+            List<PaymentDetailsItemType> paymentItems = new List<PaymentDetailsItemType>();
+
+            try
+            {
+
+                GuidId = cartCookie["cartid"].ToString();
+            }
+            catch (Exception ex)
+            {
+                GuidId = "";
+            }
+            Cart cart = new Cart();
+            cart.GuidId = GuidId;
+            List<PurchaseItemViewModel> item = null;
+            if (loginCookie["UserType"] == "Customer")
+            {
+                item = (from a in db.Carts
+                        join b in db.RetailerProdMappings on a.ItemId equals b.RMapId
+                        join c in db.RetailerProducts on b.Rid equals c.Rid
+                        join d in db.OrderDetails on a.GuidId equals d.GuidId
+                        join e in db.Registrations on c.RegId equals e.RegistrationId
+                        where a.GuidId == cart.GuidId && a.UserId == RegId
+                        select new PurchaseItemViewModel
+                        {
+                            BusinessPaypalId = e.BusinessPaypalId,
+                            Title = c.Title,
+                            Price = a.Price,
+                            Qty = a.Qty,
+                            TotalAmt = (a.Price * a.Qty),
+                        }).Distinct().ToList();
+            }
+            else if (loginCookie["UserType"] == "Wholesaler")
+            {
+                item = (from a in db.Carts
+                        join b in db.ManufactureProdMappings on a.ItemId equals b.ManufProdMapId
+                        join c in db.ManufactureProducts on b.ManufProdId equals c.ManufProdId
+                        join d in db.OrderDetails on a.GuidId equals d.GuidId
+                        join e in db.Registrations on c.RegId equals e.RegistrationId
+                        where a.GuidId == cart.GuidId && a.UserId == RegId
+                        select new PurchaseItemViewModel
+                        {
+                            BusinessPaypalId = e.BusinessPaypalId,
+                            Title = c.Title,
+                            Price = a.Price,
+                            Qty = a.Qty,
+                            TotalAmt = (a.Price * a.Qty),
+                            //TransactionFee = (Convert.ToDouble(a.Price * a.Qty) * 3.5)/100,
+                        }).Distinct().ToList();
+            }
+            else if (loginCookie["UserType"] == "Retailer")
+            {
+                item = (from a in db.Carts
+                        join b in db.WholesalerProdMappings on a.ItemId equals b.WMapId
+                        join c in db.WholesalerProducts on b.Wid equals c.Wid
+                        join d in db.OrderDetails on a.GuidId equals d.GuidId
+                        join e in db.Registrations on c.RegId equals e.RegistrationId
+                        where a.GuidId == cart.GuidId && a.UserId == RegId
+
+                        select new PurchaseItemViewModel
+                        {
+                            BusinessPaypalId = e.BusinessPaypalId,
+                            Title = c.Title,
+                            Price = a.Price,
+                            Qty = a.Qty,
+                            TotalAmt = (a.Price * a.Qty),
+                        }).Distinct().ToList();
+            }
+            if (item != null)
+            {
+                foreach (var i in item)
+                {
+                    PaymentDetailsItemType paymentItem = new PaymentDetailsItemType();
+                    paymentItem.Name = i.Title + "(" + i.Qty + ")";
+                    //  paymentItem.Amount = new BasicAmountType(currency, i.Price.ToString());
+
+                    paymentItem.Quantity = 1;
+
+                    paymentItems.Add(paymentItem);
+                    decimal _tamt = 0;
+                    decimal iqty = 0;
+                    //double _tamt1 = 0;
+                    //double iqty1 = 0;
+                    decimal.TryParse(i.Qty.ToString(), out iqty);
+                    decimal.TryParse(i.Price.ToString(), out _tamt);
+                    //double.TryParse(i.Qty.ToString(), out iqty1);
+                    //double.TryParse(i.Price.ToString(), out _tamt1);
+                    //totalamt1 += _tamt1 * iqty1;
+                    totalamt += _tamt * iqty;
+                    totQty += iqty;
+                    paymentItem.Amount = new BasicAmountType(currency, (_tamt * iqty).ToString("0.00"));
+                    //paymentItem.Tax = new BasicAmountType(currency, ((Convert.ToDouble(_tamt * iqty) * 3.5) / 100).ToString("0.00"));
+                }
+
+                // PaymentDetailsItemType paymentItem1 = new PaymentDetailsItemType();
+                //paymentItem1.Name = "Shipping Charge";
+
+                //paymentItem1.Amount = new BasicAmountType(currency, shiptotal.ToString());
+                // paymentItem1.Quantity = Convert.ToInt32("1");
+                //paymentItems.Add(paymentItem1);
+            }
+
+            var ffff = String.Format("{0:0.00}", totalamt);
+            //var ffff1 = String.Format("{0:0.00}", ((totalamt1 * 3.5)/100));
+            paymentDetail.PaymentDetailsItem = paymentItems;
+            paymentDetail.PaymentAction = (PaymentActionCodeType)EnumUtils.GetValue("Sale", typeof(PaymentActionCodeType));
+            paymentDetail.OrderTotal = new BasicAmountType((CurrencyCodeType)EnumUtils.GetValue("USD", typeof(CurrencyCodeType)), ffff);
+            //paymentDetail.ItemTotal = new BasicAmountType((CurrencyCodeType)EnumUtils.GetValue("USD", typeof(CurrencyCodeType)), ffff1);
+
+            // paymentDetail.ShippingTotal = new BasicAmountType((CurrencyCodeType)EnumUtils.GetValue("USD", typeof(CurrencyCodeType)), (shiptotal).ToString());
+
+            List<PaymentDetailsType> paymentDetails = new List<PaymentDetailsType>();
+            paymentDetails.Add(paymentDetail);
+
+            SetExpressCheckoutRequestDetailsType ecDetails = new SetExpressCheckoutRequestDetailsType();
+            //ecDetails.ReturnURL = "http://demo23.gowebbi.com/PayPal/NotifyFromPayPal/";
+            //ecDetails.CancelURL = "http://demo23.gowebbi.com/PayPal/CancelFromPaypal/";
+
+            ecDetails.ReturnURL = "http://localhost:49697/PayPal/NotifyFromPayPal/";
+            ecDetails.CancelURL = "http://localhost:49697/PayPal/CancelFromPaypal/";
+            ecDetails.PaymentDetails = paymentDetails;
+            SetExpressCheckoutRequestType request = new SetExpressCheckoutRequestType();
+            request.Version = "117.0";
+            request.SetExpressCheckoutRequestDetails = ecDetails;
+            SetExpressCheckoutReq wrapper = new SetExpressCheckoutReq();
+            wrapper.SetExpressCheckoutRequest = request;
+            Dictionary<string, string> sdkConfig = new Dictionary<string, string>();
+            sdkConfig.Add("mode", "sandbox");//live,sandbox
+
+            //sdkConfig.Add("account1.apiUsername", "info_api1.rialtotrade.com.au");
+            //sdkConfig.Add("account1.apiPassword", "9YNKEPPJKL5RGKNA");
+            //sdkConfig.Add("account1.apiSignature", "AFcWxV21C7fd0v3bYYYRCpSSRl31AWnjFicMgyo8LO3KX62kQfZSIVAh");
+
+            sdkConfig.Add("account1.apiUsername", "ambar.swadesh_api2.gmail.com");
+            sdkConfig.Add("account1.apiPassword", "GRU3WFD864YAEDPA");
+            sdkConfig.Add("account1.apiSignature", "AFcWxV21C7fd0v3bYYYRCpSSRl31AGQk8XbAtxj0rHCEWqXPOhLL24NP");
+
+            PayPalAPIInterfaceServiceService service = new PayPalAPIInterfaceServiceService(sdkConfig);
+            SetExpressCheckoutResponseType setECResponse = service.SetExpressCheckout(wrapper);
+            address = "https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=" + setECResponse.Token;//EC-4XJ82462M66085353";
+
+            //SqlCommand cmd = new SqlCommand("update Order_tbl set  TransectionId='" + setECResponse.Token + p.CartID+"' where cartid='"+p.CartID+"'", con);
+            //cmd.ExecuteNonQuery();
+            var orderDetails = db.OrderDetails.OrderByDescending(o => o.OrderDetailsId).Where(w => w.GuidId == GuidId).FirstOrDefault();
+            orderDetails.TransactionId = setECResponse.Token;
+            orderDetails.OrderStatus = "SUCCESS";
+            db.SaveChanges();
+            return Redirect(address);
+
+        }
+
