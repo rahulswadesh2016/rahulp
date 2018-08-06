@@ -1,0 +1,294 @@
+  public ActionResult AdaptivePaypal()
+        {
+            string address = "";
+            long RegId = 0;
+            System.Web.HttpCookie loginCookie = Request.Cookies["login_cookie"];
+
+
+            System.Web.HttpCookie cartCookie = Request.Cookies["cart"];
+            String GuidId = "";
+
+            //string paypal_app_id = "AYZly4P6WWLKwW4oq6CSERl91W2e_0b-3Wex1EeYvgnRA8XvlUuRPSW3BlyjKhcBYp6_KQm0qD4E5erq";//This one is for SANDBOX transation You have replace that with live app id
+            //string paypal_app_id = "ATG15mfZpbmNr56IW1QktGiJOkE7I-ZwHAoogNQwScG3StbUPSMXTJnYHfxGM4LA6a-yGpcI1tp5fqLa";//This one is for SANDBOX transation You have replace that with live app id
+            //string paypal_app_id = "7WL058655X3985910";//This one is for SANDBOX transation You have replace that with live app id
+
+
+            //string paypal_app_id = "APP-7WL058655X3985910";//  live app id
+            //string paypal_api_user_id = "admin_api1.afrafaco.style";
+            //string paypal_api_password = "C393S6EQKAHME7CM";
+            //string paypal_api_signature = "AFcWxV21C7fd0v3bYYYRCpSSRl31AcP2Zv9hMEMmOBWV6HDF2ca5nULO";
+
+
+
+            string paypal_app_id = "APP-80W284485P519543T";//This one is for SANDBOX transation You have replace that with live app id
+            string paypal_api_user_id = "ambar.swadesh_api2.gmail.com";
+            string paypal_api_password = "GRU3WFD864YAEDPA";
+            string paypal_api_signature = "AFcWxV21C7fd0v3bYYYRCpSSRl31AGQk8XbAtxj0rHCEWqXPOhLL24NP";
+
+            ServicePointManager.Expect100Continue = true;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            if (Session["guest"] == null)
+            {
+                RegId = Int64.Parse(loginCookie["id"]);
+
+            }
+            else
+            {
+                RegId = Int64.Parse(Session["guest"].ToString());
+            }
+
+
+            try
+            {
+
+                GuidId = cartCookie["cartid"].ToString();
+            }
+            catch (Exception ex)
+            {
+                GuidId = "";
+            }
+            Cart cart = new Cart();
+            cart.GuidId = GuidId;
+            List<Receiver> rlst = null;
+
+
+
+            if (Session["guest"] == null)
+            {
+                if (loginCookie["UserType"] == "Customer")
+                {
+                    rlst = (from a in db.Carts
+                            join b in db.RetailerProdMappings on a.ItemId equals b.RMapId
+                            join c in db.RetailerProducts on b.Rid equals c.Rid
+                            join d in db.OrderDetails on a.GuidId equals d.GuidId
+                            join e in db.Registrations on c.RegId equals e.RegistrationId
+                            where a.GuidId == cart.GuidId && a.UserId == RegId
+                            //&& e.UserType== "Customer"
+                            group new { a, b, e } by e.BusinessPaypalId into s
+                            let comms = db.Commission_tbl.FirstOrDefault().Commission
+
+                            select new Receiver
+                            {
+                                email = s.Key,
+                                //Pfamt = (double)(from d in s.Where(w => w.a.GuidId == GuidId && w.a.ItemId == w.b.ManufProdMapId) select d).Sum(s => s.a.Amount),
+                                amount = (double)(decimal.Round((decimal)((from d in s select d.a.Amount).Sum()) - ((decimal)(from d in s select d.a.Amount).Sum() * (decimal)comms / 100), 1)),
+                                primary = false,
+                            }).Distinct().ToList();
+                }
+                else if (loginCookie["UserType"] == "Wholesaler")
+                {
+                    rlst = (from a in db.Carts
+                            join b in db.ManufactureProdMappings on a.ItemId equals b.ManufProdMapId
+                            join c in db.ManufactureProducts on b.ManufProdId equals c.ManufProdId
+                            join d in db.OrderDetails on a.GuidId equals d.GuidId
+                            join e in db.Registrations on c.RegId equals e.RegistrationId
+                            where a.GuidId == cart.GuidId && a.UserId == RegId
+                            group new { a, b, e } by e.BusinessPaypalId into s
+                            //let t=from d in s.Sum(s=>s.a.Qty*s.a.Qty) select aa  
+                            let comms = db.Commission_tbl.FirstOrDefault().Commission
+                            select new Receiver
+                            {
+                                email = s.Key,
+                                //Pfamt = (double)(from d in s.Where(w => w.a.GuidId == GuidId && w.a.ItemId == w.b.ManufProdMapId) select d).Sum(s => s.a.Amount),
+                                amount = (double)(decimal.Round((decimal)((from d in s select d.a.Amount).Sum()) - ((decimal)(from d in s select d.a.Amount).Sum() * (decimal)comms / 100), 1)),
+                                primary = false,
+                                //TransactionFee = (Convert.ToDouble(a.Price * a.Qty) * 3.5)/100,
+                            }).Distinct().ToList();
+                }
+                else if (loginCookie["UserType"] == "Retailer")
+                {
+                    rlst = (from a in db.Carts
+                            join b in db.WholesalerProdMappings on a.ItemId equals b.WMapId
+                            join c in db.WholesalerProducts on b.Wid equals c.Wid
+                            join d in db.OrderDetails on a.GuidId equals d.GuidId
+                            join e in db.Registrations on c.RegId equals e.RegistrationId
+                            where a.GuidId == cart.GuidId && a.UserId == RegId
+                            group new { a, b, e } by e.BusinessPaypalId into s
+                            let comms = db.Commission_tbl.FirstOrDefault().Commission
+                            select new Receiver
+                            {
+                                email = s.Key,
+                                //Pfamt = (double)(from d in s.Where(w => w.a.GuidId == GuidId && w.a.ItemId == w.b.WMapId) select d).Sum(s => s.a.Amount),
+                                amount = (double)(decimal.Round((decimal)((from d in s select d.a.Amount).Sum()) - ((decimal)(from d in s select d.a.Amount).Sum() * (decimal)comms / 100), 1)),
+                                primary = false,
+                            }).ToList();
+                }
+            }
+            else
+            {
+
+
+                rlst = (from a in db.Carts
+                        join b in db.RetailerProdMappings on a.ItemId equals b.RMapId
+                        join c in db.RetailerProducts on b.Rid equals c.Rid
+                        join d in db.OrderDetails on a.GuidId equals d.GuidId
+                        join e in db.Registrations on c.RegId equals e.RegistrationId
+                        where a.GuidId == cart.GuidId
+                        //&& a.UserId == RegId
+                        group new { a, b, e } by e.BusinessPaypalId into s
+                        let comms = db.Commission_tbl.FirstOrDefault().Commission
+
+                        select new Receiver
+                        {
+                            email = s.Key,
+                            //Pfamt = (double)(from d in s.Where(w => w.a.GuidId == GuidId && w.a.ItemId == w.b.ManufProdMapId) select d).Sum(s => s.a.Amount),
+                            amount = (double)(decimal.Round((decimal)((from d in s select d.a.Amount).Sum()) - ((decimal)(from d in s select d.a.Amount).Sum() * (decimal)comms / 100), 1)),
+                            primary = false,
+                        }).Distinct().ToList();
+
+                //rlst = (from a in db.Carts
+                //        join b in db.RetailerProdMappings on a.ItemId equals b.RMapId
+                //        join c in db.RetailerProducts on b.Rid equals c.Rid
+                //        join d in db.OrderDetails on a.GuidId equals d.GuidId
+                //        join e in db.Guest_Register on d.UserId equals e.SrNo
+                //        where a.GuidId == cart.GuidId 
+                //        //&& a.UserId == RegId
+                //        group new { a, b, e } by e.Email into s
+                //        let comms = db.Commission_tbl.FirstOrDefault().Commission
+
+                //        select new Receiver
+                //        {
+                //            email = s.Key,
+                //            //Pfamt = (double)(from d in s.Where(w => w.a.GuidId == GuidId && w.a.ItemId == w.b.ManufProdMapId) select d).Sum(s => s.a.Amount),
+                //            amount = (double)(decimal.Round((decimal)((from d in s select d.a.Amount).Sum()) - ((decimal)(from d in s select d.a.Amount).Sum() * (decimal)comms / 100), 1)),
+                //            primary = false,
+                //        }).Distinct().ToList();
+
+            }
+            //var rr = decimal.Round((decimal)rlst.ToList().Sum(a => a.Pfamt),1);
+            //List<Receiver> rlst = new List<Receiver>();
+            //Receiver r = new Receiver();
+            //r.amount = 10;
+            //r.email = "uttam.swadesh@gmail.com";
+            //r.primary = false;
+            //Receiver r1 = new Receiver();
+            //r1.amount = 5;
+            //r1.email = "abhijitbanerjee222@gmail.com";
+            //r1.primary = false;
+            //rlst.Add(r);
+            //rlst.Add(r1);
+
+            //var toSend = "{ \"actionType\": \"PAY\",";
+            //    toSend += " \"currencyCode\": \"USD\",";
+            //    toSend += " \"feesPayer\": \"EACHRECEIVER\",";
+            //    toSend += " \"receiverList\": {";
+            //    toSend += "\"receiver\": [{";
+            //    toSend += " \"amount\": 25,";
+            //    toSend += " \"email\": \"abhijitbanerjee22-buyer@gmail.com\",";
+            //    toSend += "  \"primary\":true";
+            //    toSend += "   }],";
+            //    toSend += " \"receiver\": [{";
+            //    toSend += " \"amount\": 1.2,";
+            //    toSend +=" \"email\": \"abhijitbanerjee222@gmail.com\",";
+            //    toSend += " \"primary\": false";
+            //    toSend += " }]";
+            //    toSend += " },";
+            //    toSend += " \"returnUrl\": \"http://google.com\",";
+            //    toSend += " \"cancelUrl\": \"http://yahoo.com\",";
+            //    toSend += " \"requestEnvelope\": {";
+            //    toSend += " \"errorLanguage\": \"en_US\",";
+            //    toSend += "\"detailLevel\": \"ReturnAll\"}}";
+            //ViewBag.mainModel = toSend;
+
+            var toSend = "{ \"actionType\": \"PAY\",";
+            toSend += " \"currencyCode\": \"USD\",";
+            toSend += " \"feesPayer\": \"EACHRECEIVER\",";
+            toSend += " \"receiverList\": {";
+            toSend += "\"receiver\": [{";
+            toSend += " \"amount\": " + decimal.Round((decimal)db.Carts.Where(w => w.GuidId == GuidId).ToList().Sum(c2 => c2.Amount), 1) + ",";
+            toSend += " \"email\": \"ambar.swadesh@gmail.com\",";
+            //toSend += " \"email\": \"admin@afrafaco.style\",";
+            toSend += "  \"primary\":true";
+            toSend += "   }],";
+            int cnt = 0;
+            foreach (Receiver i in rlst)
+            {
+
+                if (cnt == rlst.Count - 1)
+                {
+                    toSend += " \"receiver\": [{";
+                    toSend += " \"amount\":" + i.amount.ToString() + " ,";
+                    toSend += " \"email\": \"" + i.email + "\",";
+                    toSend += " \"primary\": false";
+                    toSend += " }]";
+                }
+                else
+                {
+                    toSend += " \"receiver\": [{";
+                    toSend += " \"amount\":" + i.amount.ToString() + " ,";
+                    toSend += " \"email\": \"" + i.email + "\",";
+                    toSend += " \"primary\": false";
+                    toSend += " }],";
+
+                }
+                cnt++;
+
+            }
+            toSend += " },";
+
+            //toSend += " \"returnUrl\": \"http://localhost:49697/PayPal/NotifyFromPaypal/\",";
+            //toSend += " \"cancelUrl\": \"http://localhost:49697/PayPal/CancelFromPaypal/\",";
+
+            toSend += " \"returnUrl\": \"http://demo23.gowebbigo.com/PayPal/NotifyFromPaypal/\",";
+            toSend += " \"cancelUrl\": \"http://demo23.gowebbigo.com/PayPal/CancelFromPaypal/\",";
+
+            toSend += " \"requestEnvelope\": {";
+            toSend += " \"errorLanguage\": \"en_US\",";
+            toSend += "\"detailLevel\": \"ReturnAll\"}}";
+            ViewBag.mainModel = toSend;
+
+            var client = new RestClient("https://svcs.sandbox.paypal.com/AdaptivePayments/Pay");
+            //var client = new RestClient("https://svcs.paypal.com/AdaptivePayments/Pay");
+            var request = new RestRequest(Method.POST);
+            request.AddHeader("X-PAYPAL-APPLICATION-ID", paypal_app_id);
+            request.AddHeader("X-PAYPAL-SECURITY-USERID", paypal_api_user_id);
+            request.AddHeader("X-PAYPAL-SECURITY-PASSWORD", paypal_api_password);
+            request.AddHeader("X-PAYPAL-SECURITY-SIGNATURE", paypal_api_signature);
+            request.AddHeader("X-PAYPAL-REQUEST-DATA-FORMAT", "JSON");
+            request.AddHeader("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON");
+
+            var jss = new System.Web.Script.Serialization.JavaScriptSerializer();
+            var userInfoJson = jss.Serialize(ViewBag.mainModel);
+            request.AddParameter("undefined", toSend, ParameterType.RequestBody);
+            IRestResponse response = client.Execute(request);
+            var model = JsonConvert.DeserializeObject<PayPalResponse>(response.Content);
+
+            if (model.paymentExecStatus == "CREATED")
+            {
+
+                var resp = "{";
+                resp += "\"payKey\":\"" + model.payKey + "\",";
+                resp += "\"requestEnvelope\":{";
+                resp += "\"errorLanguage\": \"en_US\"";
+                resp += "}";
+                resp += "}";
+
+                var client1 = new RestClient("https://svcs.sandbox.paypal.com/AdaptivePayments/PaymentDetails");
+                //var client1 = new RestClient("https://svcs.paypal.com/AdaptivePayments/PaymentDetails");
+
+                var request1 = new RestRequest(Method.POST);
+                request1.AddHeader("X-PAYPAL-APPLICATION-ID", paypal_app_id);
+                request1.AddHeader("X-PAYPAL-SECURITY-USERID", paypal_api_user_id);
+                request1.AddHeader("X-PAYPAL-SECURITY-PASSWORD", paypal_api_password);
+                request1.AddHeader("X-PAYPAL-SECURITY-SIGNATURE", paypal_api_signature);
+                request1.AddHeader("X-PAYPAL-REQUEST-DATA-FORMAT", "JSON");
+                request1.AddHeader("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON");
+                request1.AddParameter("undefined", resp, ParameterType.RequestBody);
+                IRestResponse response1 = client1.Execute(request1);
+                var model1 = JsonConvert.DeserializeObject<PayPalPaymentDetails>(response1.Content);
+
+                address = "https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_ap-payment&paykey=" + model1.payKey;
+
+                //address = "https://www.paypal.com/webscr?cmd=_ap-payment&paykey=" + model1.payKey;
+
+                var orderDetails = db.OrderDetails.OrderByDescending(o => o.OrderDetailsId).Where(w => w.GuidId == GuidId).FirstOrDefault();
+                orderDetails.TransactionId = model1.payKey;
+                orderDetails.OrderStatus = model1.responseEnvelope.ack;
+                db.SaveChanges();
+                return Redirect(address);
+
+            }
+            TempData["CheckoutErrormessage"] = model.Error.FirstOrDefault().message;
+
+            return RedirectToAction("Checkout");
+        }
