@@ -1,0 +1,170 @@
+public class Rdev
+{
+    string Con = "";
+    public void connect(string con)
+    {
+         Con = con.ToString();
+    }
+    public SelectList ToSelect(DataTable table, string valueField, string textField)
+    {
+        List<SelectListItem> list = new List<SelectListItem>();
+
+        list.Add(new SelectListItem { Text = "Select", Value = "" });
+        if (table.Rows.Count > 0)
+        {
+            foreach (DataRow row in table.Rows)
+            {
+                list.Add(new SelectListItem()
+                {
+                    Text = row[textField].ToString(),
+                    Value = row[valueField].ToString()
+                });
+            }
+        }
+
+        return new SelectList(list, "Value", "Text");
+    }
+    public string ToJSON(DataTable table)
+    {
+        JavaScriptSerializer jsSerializer = new JavaScriptSerializer();
+        List<Dictionary<string, object>> parentRow = new List<Dictionary<string, object>>();
+        Dictionary<string, object> childRow;
+        foreach (DataRow row in table.Rows)
+        {
+            childRow = new Dictionary<string, object>();
+            foreach (DataColumn col in table.Columns)
+            {
+                childRow.Add(col.ColumnName, row[col]);
+            }
+            parentRow.Add(childRow);
+        }
+        return jsSerializer.Serialize(parentRow);
+    }
+
+    public T ToView<T>(DataRow row) where T : new()
+    {
+        // create a new object
+        T item = new T();
+
+        // set the item
+        SetItemFromRow(item, row);
+
+        // return 
+        return item;
+    }
+
+    public void SetItemFromRow<T>(T item, DataRow row) where T : new()
+    {
+        // go through each column
+        foreach (DataColumn c in row.Table.Columns)
+        {
+            // find the property for the column
+            PropertyInfo p = item.GetType().GetProperty(c.ColumnName);
+
+            // if exists, set the value
+            if (p != null && row[c] != DBNull.Value)
+            {
+                p.SetValue(item, row[c].ToString(), null);
+            }
+        }
+    }
+
+    public DataSet FETCH_MASTER(string Condition1, string Condition2, string Condition3
+        , string Condition4, string Condition5, string Condition6, string Condition7,
+        string Condition8, string Condition9, string Condition10
+        , string OnTable)
+    {
+        DataSet ds = new DataSet();lock@
+        Property p = new Property();
+        p.Condition1 = Condition1;
+        p.Condition2 = Condition2;
+        p.Condition3 = Condition3;
+        p.Condition4 = Condition4;
+        p.Condition5 = Condition5;
+        p.Condition6 = Condition6;
+        p.Condition7 = Condition7;
+        p.Condition8 = Condition8;
+        p.Condition9 = Condition9;
+        p.Condition10 = Condition10;
+        p.OnTable = OnTable;
+        ds = DS_FETCH_MASTER(p);
+        return ds;
+    }
+
+    public DataSet DS_FETCH_MASTER(Property p)
+    {
+        string[] paname = { "@Condition1", "@Condition2", "@Condition3", "@Condition4", "@Condition5"
+                , "@Condition6", "@Condition7", "@Condition8", "@Condition9", "@Condition10", "@OnTable" };
+        string[] pvalue = { p.Condition1, p.Condition2, p.Condition3, p.Condition4, p.Condition5
+                , p.Condition6, p.Condition7, p.Condition8, p.Condition9, p.Condition10, p.OnTable };
+        return Ds_Process("FETCH_MASTER2", paname, pvalue);
+    }
+
+    public class Property
+    {
+        public string Condition1 { get; set; }
+        public string Condition2 { get; set; }
+        public string Condition3 { get; set; }
+        public string Condition4 { get; set; }
+        public string Condition5 { get; set; }
+        public string Condition6 { get; set; }
+        public string Condition7 { get; set; }
+        public string Condition8 { get; set; }
+        public string Condition9 { get; set; }
+        public string Condition10 { get; set; }
+        public string OnTable { get; set; }
+    }
+
+
+    public int Int_Process(String Storp, string[] parametername, string[] parametervalue)
+    {
+        try
+        {
+            int a = 0;
+            Property p = new Property();
+            SqlConnection con = new SqlConnection(Con);
+            SqlCommand cmd = new SqlCommand(Storp, con);
+            cmd.CommandType = CommandType.StoredProcedure;
+            for (int i = 0; i < parametername.Length; i++)
+            {
+                cmd.Parameters.AddWithValue(parametername[i], parametervalue[i]);
+            }
+            con.Open();
+
+            a = cmd.ExecuteNonQuery();
+            con.Dispose();
+            return a;
+        }
+        catch (Exception ex)
+        {
+            return 0;
+        }
+    }
+    public DataSet Ds_Process(String Storp, string[] parametername, string[] parametervalue)
+    {
+        try
+        {
+            Property p = new Property();
+            SqlConnection con = new SqlConnection(Con);
+            SqlCommand cmd = new SqlCommand(Storp, con);
+            cmd.CommandType = CommandType.StoredProcedure;
+            for (int i = 0; i < parametername.Length; i++)
+            {
+                cmd.Parameters.AddWithValue(parametername[i], parametervalue[i]);
+            }
+            con.Open();
+            SqlDataAdapter da = new SqlDataAdapter(cmd);
+            DataSet ds = new DataSet();
+            da.Fill(ds);
+            da.Dispose();
+            con.Dispose();
+            return ds;
+        }
+        catch (Exception ex)
+        {
+            DataSet ds = null;
+            return ds;
+        }
+    }
+
+}
