@@ -1,5 +1,6 @@
- 
+using Newtonsoft.Json;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -9,12 +10,28 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web.Mvc;
 using System.Web.Script.Serialization;
+using static cusfun;
 
+
+public static class Rp
+{
+    public static List<Dictionary<string, object>> ToDictionary(this DataTable dt)
+    {
+        List<Dictionary<string, object>> dictionaries = new List<Dictionary<string, object>>();
+        foreach (DataRow row in dt.Rows)
+        {
+            Dictionary<string, object> dictionary = Enumerable.Range(0, dt.Columns.Count)
+                .ToDictionary(i => dt.Columns[i].ColumnName, i => row.ItemArray[i]);
+            dictionaries.Add(dictionary);
+        }
+        return dictionaries;
+    }
+}
 public class Rdev
 {
-    cusfun cfun=new cusfun();
+    cusfun cfun = new cusfun();
 
-   
+
     public void connect(string con)
     {
         cfun.Con = con;
@@ -37,6 +54,102 @@ public class Rdev
         }
 
         return new SelectList(list, "Value", "Text");
+    }
+    public DataTable ToTransp(DataTable inputTable)
+    {
+        DataTable outputTable = new DataTable();
+
+        // Add columns by looping rows
+
+        // Header row's first column is same as in inputTable
+        outputTable.Columns.Add(inputTable.Columns[0].ColumnName.ToString());
+
+        // Header row's second column onwards, 'inputTable's first column taken
+        foreach (DataRow inRow in inputTable.Rows)
+        {
+            string newColName = inRow[0].ToString();
+            outputTable.Columns.Add(newColName);
+        }
+
+        // Add rows by looping columns        
+        for (int rCount = 1; rCount <= inputTable.Columns.Count - 1; rCount++)
+        {
+            DataRow newRow = outputTable.NewRow();
+
+            // First column is inputTable's Header row's second column
+            newRow[0] = inputTable.Columns[rCount].ColumnName.ToString();
+            for (int cCount = 0; cCount <= inputTable.Rows.Count - 1; cCount++)
+            {
+                string colValue = inputTable.Rows[cCount][rCount].ToString();
+                newRow[cCount + 1] = colValue;
+            }
+            outputTable.Rows.Add(newRow);
+        }
+
+        return outputTable;
+    }
+    public ArrayList ToArrayList(ref DataTable dt)
+    {
+        ArrayList converted = new ArrayList(dt.Rows.Count);
+        foreach (DataRow row in dt.Rows)
+        {
+            converted.Add(row);
+        }
+        return converted;
+    }
+
+    
+    public List<T> ToList<T>(DataTable dt)
+    {
+        List<T> data = new List<T>();
+        foreach (DataRow row in dt.Rows)
+        {
+            T item = cfun.GetItem<T>(row);
+            data.Add(item);
+        }
+        return data;
+    }
+
+    public string ToJSONString(DataTable table)
+    {
+        var JSONString = new StringBuilder();
+        if (table.Rows.Count > 0)
+        {
+            JSONString.Append("[");
+            for (int i = 0; i < table.Rows.Count; i++)
+            {
+                JSONString.Append("{");
+                for (int j = 0; j < table.Columns.Count; j++)
+                {
+                    if (j < table.Columns.Count - 1)
+                    {
+                        JSONString.Append("\"" + table.Columns[j].ColumnName.ToString() + "\":" + "\"" + table.Rows[i][j].ToString() + "\",");
+                    }
+                    else if (j == table.Columns.Count - 1)
+                    {
+                        JSONString.Append("\"" + table.Columns[j].ColumnName.ToString() + "\":" + "\"" + table.Rows[i][j].ToString() + "\"");
+                    }
+                }
+                if (i == table.Rows.Count - 1)
+                {
+                    JSONString.Append("}");
+                }
+                else
+                {
+                    JSONString.Append("},");
+                }
+            }
+            JSONString.Append("]");
+        }
+        return JSONString.ToString();
+    }
+
+
+    public string ToJSONNet(DataTable table)
+    {
+        string JSONString = string.Empty;
+        JSONString = JsonConvert.SerializeObject(table);
+        return JSONString;
     }
 
     public string ToJSON(DataTable table)
@@ -68,7 +181,7 @@ public class Rdev
         return item;
     }
 
-   
+
 
     public DataSet FETCH_MASTER(string Condition1, string Condition2, string Condition3
         , string Condition4, string Condition5, string Condition6, string Condition7,
@@ -92,25 +205,8 @@ public class Rdev
         return ds;
     }
 
-   
-
-    public class Property
-    {
-        public string Condition1 { get; set; }
-        public string Condition2 { get; set; }
-        public string Condition3 { get; set; }
-        public string Condition4 { get; set; }
-        public string Condition5 { get; set; }
-        public string Condition6 { get; set; }
-        public string Condition7 { get; set; }
-        public string Condition8 { get; set; }
-        public string Condition9 { get; set; }
-        public string Condition10 { get; set; }
-        public string OnTable { get; set; }
-    }
 
 
-  
+
 
 }
-
