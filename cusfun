@@ -1,0 +1,96 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+using static Rdev;
+
+public class cusfun
+{
+    Rdev rdev = null;
+
+    public string Con = "";
+
+    public void SetItemFromRow<T>(T item, DataRow row) where T : new()
+    {
+        // go through each column
+        foreach (DataColumn c in row.Table.Columns)
+        {
+            // find the property for the column
+            PropertyInfo p = item.GetType().GetProperty(c.ColumnName);
+
+            // if exists, set the value
+            if (p != null && row[c] != DBNull.Value)
+            {
+                p.SetValue(item, row[c].ToString(), null);
+            }
+        }
+    }
+    public DataSet DS_FETCH_MASTER(Property p)
+    {
+        string[] paname = { "@Condition1", "@Condition2", "@Condition3", "@Condition4", "@Condition5"
+                , "@Condition6", "@Condition7", "@Condition8", "@Condition9", "@Condition10", "@OnTable" };
+        string[] pvalue = { p.Condition1, p.Condition2, p.Condition3, p.Condition4, p.Condition5
+                , p.Condition6, p.Condition7, p.Condition8, p.Condition9, p.Condition10, p.OnTable };
+        return Ds_Process("FETCH_MASTER", paname, pvalue);
+    }
+
+    public int Int_Process(String Storp, string[] parametername, string[] parametervalue)
+    {
+        try
+        {
+            int a = 0;
+            Property p = new Property();
+            SqlConnection con = new SqlConnection(Con);
+            SqlCommand cmd = new SqlCommand(Storp, con);
+            cmd.CommandType = CommandType.StoredProcedure;
+            for (int i = 0; i < parametername.Length; i++)
+            {
+                cmd.Parameters.AddWithValue(parametername[i], parametervalue[i]);
+            }
+            con.Open();
+
+            a = cmd.ExecuteNonQuery();
+            con.Dispose();
+            return a;
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    public DataSet Ds_Process(String Storp, string[] parametername, string[] parametervalue)
+    {
+        try
+        {
+            Property p = new Property();
+            SqlConnection con = new SqlConnection(Con);
+            SqlCommand cmd = new SqlCommand(Storp, con);
+            cmd.CommandType = CommandType.StoredProcedure;
+            for (int i = 0; i < parametername.Length; i++)
+            {
+                cmd.Parameters.AddWithValue(parametername[i], parametervalue[i]);
+            }
+
+            con.Open();
+            SqlDataAdapter da = new SqlDataAdapter(cmd);
+            DataSet ds = new DataSet();
+            da.Fill(ds);
+            da.Dispose();
+            con.Dispose();
+            return ds;
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+
+
+    }
+}
+
+
