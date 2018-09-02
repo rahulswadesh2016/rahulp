@@ -5,7 +5,7 @@ DECLARE @SCHEMA_NAME VARCHAR(128)
 -- *** User Customisation 
  
 -- Set up the name of the table here :
-SET @TABLE_NAME = 'tbl_Login'
+SET @TABLE_NAME = 'SignUp'
 -- Set up the name of the schema here, or just leave set to 'dbo' :
 SET @SCHEMA_NAME = 'dbo'
  
@@ -60,9 +60,11 @@ WHILE @@FETCH_STATUS=0
   FETCH NEXT FROM TableCursor INTO @vvc_ColumnName
 
   -- add a comma if we are not at the end of the row
-  IF @@FETCH_STATUS=0
-    SET @vvc_ColumnList2 = @vvc_ColumnList2 + ','
-    SET @vvc_ColumnList = @vvc_ColumnList + ','
+	IF @@FETCH_STATUS=0
+	  begin
+		SET @vvc_ColumnList = @vvc_ColumnList + ','
+		SET @vvc_ColumnList2 = @vvc_ColumnList2 + ','
+	   end
   END
 
 CLOSE TableCursor
@@ -72,15 +74,14 @@ DEALLOCATE TableCursor
  
 --PRINT @vvc_ColumnList
 
-declare @TableName sysname = 'Booking'
-declare @Result varchar(max) = 'public DataSet Insert_' + UPPER(LEFT(@TableName,1))+LOWER(SUBSTRING(@TableName,2,LEN(@TableName)))  + '('+@TableName+' p)
-
+ 
+declare @Result varchar(max) = 'public DataSet IN_UP_' + UPPER(@TABLE_NAME)  + '('+@TABLE_NAME+' p)
 {
     try
     {
-        string[] paname = { '+@vvc_ColumnList2+'};
+        string[] paname = { '+@vvc_ColumnList2+' };
         dynamic[] pvalue = { '+@vvc_ColumnList+' };
-        return Ds_Process("Insert_' + UPPER(LEFT(@TableName,1))+LOWER(SUBSTRING(@TableName,2,LEN(@TableName)))  + '", paname, pvalue);
+        return Ds_Process("IN_UP_' + UPPER(@TABLE_NAME)  + '", paname, pvalue);
     }
     catch
     {
